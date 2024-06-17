@@ -13,41 +13,33 @@ with open("TOKEN_DISCORD.txt", "r") as f:
 # Create a Dropbox object using the access token
 dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 
-# Function to list files in a directory
-def list_files(folder_path):
-    try:
-        # Get the files in the folder
-        result = dbx.files_list_folder(folder_path)
-        files = result.entries
-        
-        # Print out the files
-        for file in files:
-            print(f"Name: {file.name}, Type: {'Folder' if isinstance(file, dropbox.files.FolderMetadata) else 'File'}")
-    
-    except dropbox.exceptions.ApiError as err:
-        print(f"API error: {err}")
-
-# Replace with the path of the directory you want to access
-DIRECTORY_PATH = '/images'
-
-
-
 intents = discord.Intents.default()
 intents.message_content = True
 client = commands.Bot(command_prefix = '!', intents=intents)
 
+# Replace with the path of the directory you want to access
+DIRECTORY_PATH = '/content'
+
 @client.event
 async def on_ready():
     print("ready!")
-    print("---------------------")
 
-# !hello in discord
 @client.command()
 async def hello(ctx):
     await ctx.send("test")
 
+@client.command()
+async def folder(ctx):
+    try:
+        # Get the files in the folder
+        result = dbx.files_list_folder(DIRECTORY_PATH)
+        files = result.entries
+        
+        # Print out the files
+        for file in files:
+            await ctx.send(f"Name: {file.name}, Type: {'Folder' if isinstance(file, dropbox.files.FolderMetadata) else 'File'}")
+    
+    except dropbox.exceptions.ApiError as err:
+        await ctx.send(f"API error: {err}")
+
 client.run(TOKEN_DISCORD)
-
-
-
-list_files(DIRECTORY_PATH)
