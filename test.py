@@ -1,9 +1,8 @@
-import dropbox # type: ignore
-import dropbox.files  # type: ignore
+import dropbox
+import dropbox.files
 
-import discord  # type: ignore
-from discord.ext import commands # type: ignore
-import os
+import discord
+from discord.ext import commands
 
 with open("TOKEN_DROPBOX.txt", "r") as f:
     TOKEN_DROPBOX = f.read()
@@ -33,8 +32,20 @@ DIRECTORY_PATH = '/images'
 
 
 
+intents = discord.Intents.default()
+client = commands.Bot(command_prefix = '!', intents=intents)
 
+@client.event
+async def on_ready():
+    print("ready!")
+    print("---------------------")
 
+# !hello in discord
+@client.command()
+async def hello(ctx):
+    await ctx.send("test")
+
+client.run(TOKEN_DISCORD)
 
 
 
