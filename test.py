@@ -1,6 +1,6 @@
-import dropbox
-import dropbox.files
-import discord
+import dropbox # type: ignore
+import dropbox.files  # type: ignore
+import discord  # type: ignore
 
 with open("TOKEN.txt", "r") as f:
     TOKEN = f.read()
