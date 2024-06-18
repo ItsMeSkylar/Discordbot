@@ -3,8 +3,14 @@ from scripts.DropboxScripts import get_or_create_shared_link
 import dropbox
 import dropbox.files
 
+import json
+
 import discord
 from discord.ext import commands
+from discord import app_commands
+
+with open('config.json') as config_file:
+    config = json.load(config_file)
 
 with open("tokens/TOKEN_DROPBOX.txt", "r") as f:
     TOKEN_DROPBOX = f.read()
@@ -25,7 +31,27 @@ TEST = "/content/uploads/2024-07/images"
 
 @client.event
 async def on_ready():
-    print("JenniferBot ready!")
+    try:
+        await client.tree.sync()
+        print("Command tree synced successfully.")
+        print("JenniferBot ready!")
+    except Exception as err:
+        print(f"Failed to sync command tree: {err}")
+
+@client.tree.command(name="jen", description="test description")
+@app_commands.choices(choice=[
+    app_commands.Choice(name="Option 1", value="option_1"),
+    app_commands.Choice(name="Option 2", value="option_2"),
+    app_commands.Choice(name="Option 3", value="option_3"),
+])
+async def ping(interaction: discord.Interaction, choice: app_commands.Choice[str]):
+    await interaction.response.send_message(f"selected: {choice.name}, value: {choice.value}")
+
+@client.tree.command(name="set_channel")
+async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    # Update the configuration with the new channel ID
+    config['channel'] = channel.id
+    await interaction.response.send_message(f'Config variable "channel" set to {channel.id}')
 
 @client.command()
 async def folder(ctx):
