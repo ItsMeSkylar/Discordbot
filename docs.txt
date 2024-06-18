@@ -1,0 +1,23 @@
+dropbox file data looks like this
+
+FileMetadata(
+	client_modified=datetime.datetime(2024, 2, 18, 22, 33, 6),
+	content_hash='8eed94e4bbf8b65757f6a1cdb4491cdaa3706c2be615ceb39a161ee3dd51fbab',
+	export_info=NOT_SET,
+	file_lock_info=NOT_SET,
+	has_explicit_shared_members=NOT_SET,
+	id='id:qseSB0_LvyMAAAAAAAAKHA',
+	is_downloadable=True,
+	media_info=NOT_SET,
+	name='DSC00808.JPG',
+	parent_shared_folder_id=NOT_SET,
+	path_display='/content/uploads/2024-07/images/DSC00808.JPG',
+	path_lower='/content/uploads/2024-07/images/dsc00808.jpg',
+	preview_url=NOT_SET,
+	property_groups=NOT_SET,
+	rev='61b1dd5d2b9b4bdf05f13',
+	server_modified=datetime.datetime(2024, 6, 17, 22, 53, 35),
+	sharing_info=NOT_SET,
+	size=4096000,
+	symlink_info=NOT_SET
+	)
