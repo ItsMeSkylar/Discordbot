@@ -1,3 +1,5 @@
+scripts/__pycache__/
 TOKEN_DISCORD.txt
 TOKEN_DROPBOX.txt
 /creds.json
+__pycache__/
