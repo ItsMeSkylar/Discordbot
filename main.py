@@ -1,19 +1,16 @@
 from scripts.DropboxScripts import get_or_create_shared_link
 
-import dropbox
-import dropbox.files
-
-import json
-
-import discord
+#import dropbox
+import dropbox.files, os, json, discord
 from discord.ext import commands
 from discord import app_commands
 
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-with open("tokens/TOKEN_DROPBOX.txt", "r") as f:
-    TOKEN_DROPBOX = f.read()
+#with open("tokens/TOKEN_DROPBOX.txt", "r") as f:
+#    TOKEN_DROPBOX = f.read()
+TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
 
 with open("tokens/TOKEN_DISCORD.txt", "r") as f:
     TOKEN_DISCORD = f.read()
@@ -28,7 +25,6 @@ client = commands.Bot(command_prefix = '!', intents=intents)
 # Replace with the path of the directory you want to access
 DIRECTORY_PATH = '/content'
 TEST = "/content/uploads/2024-07/images"
-
 
 @client.event
 async def on_ready():
