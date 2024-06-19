@@ -16,6 +16,7 @@ videos must be posted via dropbox links
 
 todo:
     figure out how to post folders
+    figure out posting sfw AND nsfw
 
 ----------------------------------------
 /jen generate folder ?? (yyyy/mm)
