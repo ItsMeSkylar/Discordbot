@@ -29,6 +29,7 @@ client = commands.Bot(command_prefix = '!', intents=intents)
 DIRECTORY_PATH = '/content'
 TEST = "/content/uploads/2024-07/images"
 
+
 @client.event
 async def on_ready():
     try:
