@@ -12,7 +12,7 @@ import setCreds
 # TOKEN_DISCORD = f.read()
 
 ## GLOBALS ########################################################################
-setCreds
+#setCreds
 # DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 DROPBOX_APP_KEY = os.environ["DROPBOX_APP_KEY"]
 DROPBOX_APP_SECRET = os.environ["DROPBOX_APP_SECRET"]
@@ -21,28 +21,7 @@ DROPBOX_APP_SECRET = os.environ["DROPBOX_APP_SECRET"]
 ######################################################################## GLOBALS ##
 
 
-def authorizeDropbox():
-    # build the authorization URL:
-    authorization_url = "https://www.dropbox.com/oauth2/authorize?client_id=%s&response_type=code" % DROPBOX_APP_KEY
-    # send the user to the authorization URL:
-    print('Go to the following URL and allow access:')
-    print(authorization_url)
 
-    # get the authorization code from the user:
-    authorization_code = input('Enter the code:\n')
-
-    # exchange the authorization code for an access token:
-    token_url = "https://api.dropboxapi.com/oauth2/token"
-    params = {
-        "code": authorization_code,
-        "grant_type": "authorization_code",
-        "client_id": DROPBOX_APP_KEY,
-        "client_secret": DROPBOX_APP_SECRET
-    }
-    r = requests.post(token_url, data=params)
-    print(r.text)
-
-    return (r.json())
 
 
 # attempt to fetch the DROPBOX BEARER token from the shell environment variables.
@@ -51,10 +30,11 @@ try:
 
 # NO BEARER TOKEN FOUND. Run the OAuth flow to go get one.
 except KeyError:
-    DROPBOX_BEARER = os.environ["DROPBOX_BEARER"] = authorizeDropbox()["access_token"]
+    setCreds.authorizeDropbox()
 
-    # Dump the most recent BEARER token to the credencial store
-    setCreds.commitLatestDropboxBearer()
+    # fetch the newly created token from the system environment..
+    DROPBOX_BEARER = os.environ["DROPBOX_BEARER"]
+
 
 # Create a Dropbox object using the access token
 dbx = dropbox.Dropbox(DROPBOX_BEARER)
