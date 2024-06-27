@@ -26,6 +26,24 @@ client = commands.Bot(command_prefix = '!', intents=intents)
 DIRECTORY_PATH = '/content/uploads'
 TEST = "/content/uploads/2024-07/images"
 
+def date_validation(year, month):
+    error = ""
+    if not year.isdigit() or not month.isdigit():
+        error = "ERROR: Year and month must be numeric."
+        
+    year_num = int(year)
+    month_num = int(month)
+        
+    #concat "20 + year", so user can write ex 24-08
+    if year_num < 1000 or year_num > 9999:
+        error = "ERROR: Invalid year. Please provide a 4-digit year."
+    
+    if month_num < 1 or month_num > 12:
+        error = "ERROR: Invalid month. Please provide a month between 1 and 12."
+    
+    return error
+
+
 @client.event
 async def on_ready():
     try:
@@ -40,21 +58,9 @@ async def on_ready():
 @client.tree.command(name="generate_folder", description="generates folder for content")
 async def generate_folders(interaction: discord.Interaction, year: str, month: str):
     try:
-        if not year.isdigit() or not month.isdigit():
-            error = "ERROR: Year and month must be numeric."
-            return interaction.response.send_message(f"{error}")
-        
-        year_num = int(year)
-        month_num = int(month)
-        
-        #concat "20 + year", so user can write ex 24-08
-        if year_num < 1000 or year_num > 9999:
-            error = "ERROR: Invalid year. Please provide a 4-digit year."
-            return interaction.response.send_message(f"{error}")
-        
-        if month_num < 1 or month_num > 12:
-            error = "ERROR: Invalid month. Please provide a month between 1 and 12."
-            return interaction.response.send_message(f"{error}")
+        error = date_validation(year, month)
+        if error != "":
+            return await interaction.response.send_message(f"ERROR (generate_json): {error}")
         
         folder_name = f"{year}-{month}"
         
@@ -77,31 +83,13 @@ async def generate_folders(interaction: discord.Interaction, year: str, month: s
 @client.tree.command(name="generate_json", description="generates json file based of content in folder")
 async def generate_json(interaction: discord.Interaction, year: str, month: str):
     try:
-        if not year.isdigit() or not month.isdigit():
-            error = "ERROR: Year and month must be numeric."
-            return interaction.response.send_message(f"{error}")
-        
-        year_num = int(year)
-        month_num = int(month)
-        
-        #concat "20 + year", so user can write ex 24-08
-        if year_num < 1000 or year_num > 9999:
-            error = "ERROR: Invalid year. Please provide a 4-digit year."
-            return interaction.response.send_message(f"{error}")
-        
-        if month_num < 1 or month_num > 12:
-            error = "ERROR: Invalid month. Please provide a month between 1 and 12."
-            return interaction.response.send_message(f"{error}")
-        
-        
-        
-       
+        error = date_validation(year, month)
+        if error != "":
+            return await interaction.response.send_message(f"ERROR (generate_json): {error}")
         
         dropbox_path = f"/content/uploads/{year}-{month}"
         
-        
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        parent_dir = os.path.dirname(dir_path)
+        parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
         
         absolute_path = os.path.join(parent_dir, f"content\\uploads\\{year}-{month}")
 
@@ -109,27 +97,20 @@ async def generate_json(interaction: discord.Interaction, year: str, month: str)
             try:
                 generate_json_File(dropbox_path, absolute_path, month)
                 await interaction.response.send_message(f"json generated")
+                
             except Exception as err:
                 await interaction.response.send_message(f"ERROR (generate_json_File): {err}")
                 
         else:
-            await interaction.response.send_message(f"missing folder: {absolute_path} ")
-
-        
+            await interaction.response.send_message(f"missing folder: {absolute_path}")
+            
     except Exception as err:
         await interaction.response.send_message(f"ERROR (generate_json): {err}")
-    
-
 
 
 @client.tree.command(name="validate_folder", description="validate content for specific folder")
 async def validate_folder(interaction: discord.Interaction, year: str, month: str):
     await interaction.response.send_message(f"ERROR:")
-
-
-
-
-
 
 
 
@@ -144,32 +125,32 @@ async def validate_folder(interaction: discord.Interaction, year: str, month: st
 
 
 
-@client.tree.command(name="set_channel")
-async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
-    # Update the configuration with the new channel ID
-    config['channel'] = channel.id
-    await interaction.response.send_message(f'Config variable "channel" set to {channel.id}')
+#@client.tree.command(name="set_channel")
+#async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+#    # Update the configuration with the new channel ID
+#    config['channel'] = channel.id
+#    await interaction.response.send_message(f'Config variable "channel" set to {channel.id}')
 
 
 
-@client.command()
-async def folder(ctx):
-    try:
-        # Get the files in the folder
-        result = dbx.files_list_folder(TEST)
-        files = result.entries
-        
-        # Print out the files
-        #for file in files:
-            #await ctx.send(f"Name: {file.name}, Type: {'Folder' if isinstance(file, dropbox.files.FolderMetadata) else 'File'}")
-
-        test = files[0]
-
-        shared_link_url = get_or_create_shared_link(test.path_lower)
-        await ctx.send(f"{shared_link_url}")
-        print(f"posted {test.name} with the following link: {shared_link_url}")
-
-    except Exception as err:
-        await ctx.send(f"API error: {err}")
+#@client.command()
+#async def folder(ctx):
+#    try:
+#        # Get the files in the folder
+#        result = dbx.files_list_folder(TEST)
+#        files = result.entries
+#        
+#        # Print out the files
+#        #for file in files:
+#            #await ctx.send(f"Name: {file.name}, Type: {'Folder' if isinstance(file, dropbox.files.FolderMetadata) else 'File'}")
+#
+#        test = files[0]
+#
+#        shared_link_url = get_or_create_shared_link(test.path_lower)
+#        await ctx.send(f"{shared_link_url}")
+#        print(f"posted {test.name} with the following link: {shared_link_url}")
+#
+#    except Exception as err:
+#        await ctx.send(f"API error: {err}")
 
 client.run(TOKEN_DISCORD)
