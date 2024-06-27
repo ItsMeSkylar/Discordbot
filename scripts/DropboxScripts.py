@@ -22,6 +22,8 @@ except dropbox.exceptions.AuthError as err:
     TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
     dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 
+
+
 def get_or_create_shared_link(path):
     try:
         # Try to create a shared link
@@ -35,3 +37,14 @@ def get_or_create_shared_link(path):
             if links.links:
                 return links.links[0].url
         raise err
+
+
+
+def get_all_files(path):
+    try:
+        result = dbx.files_list_folder(path)
+        files = result.entries
+        return files
+    
+    except Exception as err:
+        raise (f"API error: {err}")
