@@ -4,6 +4,7 @@ from scripts.JsonScripts import generate_json_File
 import dropbox.files, os, json, discord
 from discord.ext import commands
 from discord import app_commands
+import re
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -23,26 +24,28 @@ intents.message_content = True
 client = commands.Bot(command_prefix = '!', intents=intents)
 
 # Replace with the path of the directory you want to access
-DIRECTORY_PATH = '/content/uploads'
-TEST = "/content/uploads/2024-07/images"
+#TEST = "/content/uploads/2024-07/images"
 
-def date_validation(year, month):
-    error = ""
+# ex 2024-08
+async def date_validation(interaction, year, month):
     if not year.isdigit() or not month.isdigit():
-        error = "ERROR: Year and month must be numeric."
+        await interaction.response.send_message(f"ERROR: Year and month must be numeric.")
         
     year_num = int(year)
     month_num = int(month)
+    
+    if year_num < 100:
+        year_num += 2000
         
-    #concat "20 + year", so user can write ex 24-08
     if year_num < 1000 or year_num > 9999:
-        error = "ERROR: Invalid year. Please provide a 4-digit year."
+        await interaction.response.send_message(f"ERROR: Invalid year. Please provide a 4-digit year.")
     
     if month_num < 1 or month_num > 12:
-        error = "ERROR: Invalid month. Please provide a month between 1 and 12."
+        await interaction.response.send_message(f"ERROR: Invalid month. Please provide a month between 1 and 12.")
+        
+    month_str = f"{month_num:02d}"
     
-    return error
-
+    return f"{year_num}-{month_str}"
 
 @client.event
 async def on_ready():
@@ -54,44 +57,32 @@ async def on_ready():
         print(f"Failed to sync command tree: {err}")
 
 
-
+# simply generates a folder, you lazy bum
 @client.tree.command(name="generate_folder", description="generates folder for content")
 async def generate_folders(interaction: discord.Interaction, year: str, month: str):
     try:
-        error = date_validation(year, month)
-        if error != "":
-            return await interaction.response.send_message(f"ERROR (generate_json): {error}")
+        date = await date_validation(interaction, year, month)
         
-        folder_name = f"{year}-{month}"
+        absolute_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "content\\uploads", date)
         
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        parent_dir = os.path.dirname(dir_path)
-        
-        folder_path = os.path.join(parent_dir, "content\\uploads", folder_name)
-        
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-            await interaction.response.send_message(f"Successfully generated folder: {folder_name} at {folder_path}\nPlease add your content to the folder and then run validate")
+        if not os.path.exists(absolute_path):
+            os.makedirs(absolute_path)
+            await interaction.response.send_message(f"Successfully generated folder: {date} at {absolute_path}\nPlease add your content to the folder and then run validate")
         else:
-            await interaction.response.send_message(f"Folder {folder_name} already exists at {folder_path}")
+            await interaction.response.send_message(f"Folder {date} already exists at {absolute_path}")
             
     except Exception as err:
         await interaction.response.send_message(f"ERROR: {err}")
 
 
-
+# generates json based of content in given folder
 @client.tree.command(name="generate_json", description="generates json file based of content in folder")
 async def generate_json(interaction: discord.Interaction, year: str, month: str):
     try:
-        error = date_validation(year, month)
-        if error != "":
-            return await interaction.response.send_message(f"ERROR (generate_json): {error}")
+        date = await date_validation(interaction, year, month)
         
-        dropbox_path = f"/content/uploads/{year}-{month}"
-        
-        parent_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-        
-        absolute_path = os.path.join(parent_dir, f"content\\uploads\\{year}-{month}")
+        dropbox_path = f"/content/uploads/{date}"
+        absolute_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), f"content\\uploads\\{date}")
 
         if os.path.exists(absolute_path):
             try:
