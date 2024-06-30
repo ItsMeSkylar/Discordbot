@@ -1,5 +1,6 @@
 from scripts.DropboxScripts import get_or_create_shared_link
 from scripts.JsonScripts import generate_json_File
+from scripts.JsonScripts import validate_json_life
 
 import dropbox.files, os, json, discord
 from discord.ext import commands
@@ -26,10 +27,12 @@ client = commands.Bot(command_prefix = '!', intents=intents)
 # Replace with the path of the directory you want to access
 #TEST = "/content/uploads/2024-07/images"
 
+APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
 # ex 2024-08
-async def date_validation(interaction, year, month):
+async def date_validation(year, month):
     if not year.isdigit() or not month.isdigit():
-        await interaction.response.send_message(f"ERROR: Year and month must be numeric.")
+        raise Exception(f"ERROR: Year and month must be numeric.")
         
     year_num = int(year)
     month_num = int(month)
@@ -38,10 +41,10 @@ async def date_validation(interaction, year, month):
         year_num += 2000
         
     if year_num < 1000 or year_num > 9999:
-        await interaction.response.send_message(f"ERROR: Invalid year. Please provide a 4-digit year.")
+        raise Exception(f"ERROR: Invalid year. Please provide a 4-digit year.")
     
     if month_num < 1 or month_num > 12:
-        await interaction.response.send_message(f"ERROR: Invalid month. Please provide a month between 1 and 12.")
+        raise Exception(f"ERROR: Invalid month. Please provide a month between 1 and 12.")
         
     month_str = f"{month_num:02d}"
     
@@ -56,52 +59,58 @@ async def on_ready():
     except Exception as err:
         print(f"Failed to sync command tree: {err}")
 
-
 # simply generates a folder, you lazy bum
 @client.tree.command(name="generate_folder", description="generates folder for content")
 async def generate_folders(interaction: discord.Interaction, year: str, month: str):
     try:
-        date = await date_validation(interaction, year, month)
-        
-        absolute_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "content\\uploads", date)
+        date = await date_validation(year, month)
+        absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
         
         if not os.path.exists(absolute_path):
             os.makedirs(absolute_path)
             await interaction.response.send_message(f"Successfully generated folder: {date} at {absolute_path}\nPlease add your content to the folder and then run validate")
         else:
-            await interaction.response.send_message(f"Folder {date} already exists at {absolute_path}")
+            raise Exception(f"Folder '{date}' already exists at '{absolute_path}'")
             
     except Exception as err:
         await interaction.response.send_message(f"ERROR: {err}")
-
 
 # generates json based of content in given folder
 @client.tree.command(name="generate_json", description="generates json file based of content in folder")
 async def generate_json(interaction: discord.Interaction, year: str, month: str):
     try:
-        date = await date_validation(interaction, year, month)
-        
+        date = await date_validation(year, month)
         dropbox_path = f"/content/uploads/{date}"
-        absolute_path = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), f"content\\uploads\\{date}")
+        absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
 
         if os.path.exists(absolute_path):
             try:
-                generate_json_File(dropbox_path, absolute_path, month)
-                await interaction.response.send_message(f"json generated")
+                generate_json_File(dropbox_path, absolute_path, date)
+                await interaction.response.send_message(f"json '{date}' generated at {absolute_path}")
                 
             except Exception as err:
-                await interaction.response.send_message(f"ERROR (generate_json_File): {err}")
+                raise Exception(f"ERROR (generate_json_File): {err}")
                 
         else:
-            await interaction.response.send_message(f"missing folder: {absolute_path}")
+            raise Exception(f"missing folder: '{absolute_path}'")
             
     except Exception as err:
-        await interaction.response.send_message(f"ERROR (generate_json): {err}")
+        await interaction.response.send_message(f"ERROR: {err}")
 
-
+#validate prefix name, dates, and filenames
 @client.tree.command(name="validate_folder", description="validate content for specific folder")
 async def validate_folder(interaction: discord.Interaction, year: str, month: str):
-    await interaction.response.send_message(f"ERROR:")
+    try:
+        date = await date_validation(year, month)
+        #dropbox_path = f"/content/uploads/{date}"
+        absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
+        
+        await validate_json_life(absolute_path)
+            
+        await interaction.response.send_message(f"success")
+                    
+    except Exception as err:
+        await interaction.response.send_message(f"ERROR: {err}")
 
 
 
