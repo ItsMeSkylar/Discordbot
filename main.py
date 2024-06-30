@@ -1,6 +1,11 @@
 from scripts.DropboxScripts import get_or_create_shared_link
-from scripts.JsonScripts import generate_json_File
-from scripts.JsonScripts import validate_json_life
+
+from scripts.DropboxScripts import rename_dropbox_files
+
+
+from scripts.JsonScripts import generate_json_file
+from scripts.JsonScripts import validate_json_file
+from scripts.JsonScripts import rename_json_files
 
 import dropbox.files, os, json, discord
 from discord.ext import commands
@@ -23,9 +28,6 @@ dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 intents = discord.Intents.default()
 intents.message_content = True
 client = commands.Bot(command_prefix = '!', intents=intents)
-
-# Replace with the path of the directory you want to access
-#TEST = "/content/uploads/2024-07/images"
 
 APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
@@ -85,7 +87,7 @@ async def generate_json(interaction: discord.Interaction, year: str, month: str)
 
         if os.path.exists(absolute_path):
             try:
-                generate_json_File(dropbox_path, absolute_path, date)
+                generate_json_file(dropbox_path, absolute_path, date)
                 await interaction.response.send_message(f"json '{date}' generated at {absolute_path}")
                 
             except Exception as err:
@@ -102,17 +104,26 @@ async def generate_json(interaction: discord.Interaction, year: str, month: str)
 async def validate_folder(interaction: discord.Interaction, year: str, month: str):
     try:
         date = await date_validation(year, month)
-        #dropbox_path = f"/content/uploads/{date}"
+        dropbox_path = f"/content/uploads/{date}"
         absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
         
-        await validate_json_life(absolute_path)
+        await validate_json_file(absolute_path)
+        
+        await rename_json_files(absolute_path)
+        
+        await interaction.response.defer() # rename_dropbox_files takes longer than 3 seconds, defer and follow up
+        await rename_dropbox_files(absolute_path, dropbox_path)
             
-        await interaction.response.send_message(f"success")
+        await interaction.followup.send(f"Success!")
                     
     except Exception as err:
-        await interaction.response.send_message(f"ERROR: {err}")
+        await interaction.response.send_message(f"validate_folder ERROR: {err}")
 
 
+
+@client.tree.command(name="whoami", description="Identify the user who issued the command")
+async def whoami(interaction: discord.Interaction):
+    await interaction.response.send_message(f'You are {interaction.user.name}')
 
 #@client.tree.command(name="jen", description="test description")
 #@app_commands.choices(choice=[

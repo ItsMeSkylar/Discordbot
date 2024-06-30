@@ -1,6 +1,8 @@
+
 import dropbox, os
 import dropbox.files
 import setCreds
+import json
 
 # Load credencials into system environment variables.
 # os.environ["DROPBOX_APP_KEY"]
@@ -22,6 +24,23 @@ except dropbox.exceptions.AuthError as err:
     TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
     dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 
+
+async def rename_dropbox_files(absolute_path, dropbox_path):
+    try:
+        with open(f'{absolute_path}.json', 'r') as json_file:
+            data = json.load(json_file)
+        
+        for date, content in data["content"].items():
+                for file_key, file_data in content["files"].items():
+                    filename = file_data.get("filename", "")
+                    
+                    old_name = dropbox_path + f"/{filename}"
+                    new_name = dropbox_path + f"/{file_key}"
+                    
+                    dbx.files_move_v2(old_name, new_name)
+        
+    except dropbox.exceptions.ApiError as err:
+        raise RuntimeError(f"API error: {err}") from err
 
 
 def get_or_create_shared_link(path):
