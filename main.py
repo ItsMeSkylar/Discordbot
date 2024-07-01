@@ -2,15 +2,16 @@ from scripts.DropboxScripts import get_or_create_shared_link
 
 from scripts.DropboxScripts import rename_dropbox_files
 
+from scripts.DiscordScripts import post_content
 
 from scripts.JsonScripts import generate_json_file
 from scripts.JsonScripts import validate_json_file
 from scripts.JsonScripts import rename_json_files
+from scripts.JsonScripts import strip_file_exif
 
 import dropbox.files, os, json, discord
 from discord.ext import commands
 from discord import app_commands
-import re
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -30,6 +31,13 @@ intents.message_content = True
 client = commands.Bot(command_prefix = '!', intents=intents)
 
 APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+
+def user_validation(user):
+    whitelist = ["skylarfolf","kimkip"]
+    if user in whitelist:
+        return True
+    else:
+        raise Exception("user not whitelisted")
 
 # ex 2024-08
 async def date_validation(year, month):
@@ -55,6 +63,7 @@ async def date_validation(year, month):
 @client.event
 async def on_ready():
     try:
+        await client.change_presence(activity=discord.Game(name="Sqrrrks~"))
         await client.tree.sync()
         print("Command tree synced successfully.")
         print("JenniferBot ready!")
@@ -64,6 +73,11 @@ async def on_ready():
 # simply generates a folder, you lazy bum
 @client.tree.command(name="generate_folder", description="generates folder for content")
 async def generate_folders(interaction: discord.Interaction, year: str, month: str):
+    try:
+        user_validation(interaction.user.name)
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+        
     try:
         date = await date_validation(year, month)
         absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
@@ -80,6 +94,11 @@ async def generate_folders(interaction: discord.Interaction, year: str, month: s
 # generates json based of content in given folder
 @client.tree.command(name="generate_json", description="generates json file based of content in folder")
 async def generate_json(interaction: discord.Interaction, year: str, month: str):
+    try:
+        user_validation(interaction.user.name)
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+    
     try:
         date = await date_validation(year, month)
         dropbox_path = f"/content/uploads/{date}"
@@ -103,27 +122,64 @@ async def generate_json(interaction: discord.Interaction, year: str, month: str)
 @client.tree.command(name="validate_folder", description="validate content for specific folder")
 async def validate_folder(interaction: discord.Interaction, year: str, month: str):
     try:
+        user_validation(interaction.user.name)
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+    
+    try:
         date = await date_validation(year, month)
         dropbox_path = f"/content/uploads/{date}"
         absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
         
         await validate_json_file(absolute_path)
-        
         await rename_json_files(absolute_path)
         
         await interaction.response.defer() # rename_dropbox_files takes longer than 3 seconds, defer and follow up
+        
+        await strip_file_exif(absolute_path)
         await rename_dropbox_files(absolute_path, dropbox_path)
-            
+        
         await interaction.followup.send(f"Success!")
                     
     except Exception as err:
         await interaction.response.send_message(f"validate_folder ERROR: {err}")
 
 
+@client.tree.command(name="post", description="post")
+async def post(interaction: discord.Interaction, year: str, month: str, day: str):
+    try:
+        user_validation(interaction.user.name)
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+    
+    try:
+        date = await date_validation(year, month)
+        dropbox_path = f"/content/uploads/{date}"
+        absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
+        
+        await interaction.response.defer() # post_content takes longer than 3 seconds, defer and follow up
+        
+        await post_content(client, dropbox_path, absolute_path, f"{date}-{day}")
+               
+        await interaction.followup.send(f"Success!")
 
-@client.tree.command(name="whoami", description="Identify the user who issued the command")
-async def whoami(interaction: discord.Interaction):
-    await interaction.response.send_message(f'You are {interaction.user.name}')
+    except Exception as err:
+        await interaction.response.send_message(f"ERROR (post): {err}")
+        
+
+
+@client.tree.command(name="set_channel")
+async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    # Update the configuration with the new channel ID
+    try:
+        user_validation(interaction.user.name)
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+    
+    config['channel'] = channel.id
+    await interaction.response.send_message(f'Config variable "channel" set to {channel.id}')
+
+
 
 #@client.tree.command(name="jen", description="test description")
 #@app_commands.choices(choice=[
@@ -136,32 +192,32 @@ async def whoami(interaction: discord.Interaction):
 
 
 
-#@client.tree.command(name="set_channel")
-#async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
-#    # Update the configuration with the new channel ID
-#    config['channel'] = channel.id
-#    await interaction.response.send_message(f'Config variable "channel" set to {channel.id}')
-
-
-
-#@client.command()
-#async def folder(ctx):
+#@client.tree.command(name="test")
+#async def folder(interaction: discord.Interaction):
+#    try:
+#        user_validation(interaction.user.name)
+#    except Exception as err:
+#        return await interaction.response.send_message(f"{err}")
+#    
 #    try:
 #        # Get the files in the folder
-#        result = dbx.files_list_folder(TEST)
+#        result = dbx.files_list_folder("/content/uploads/2024-08")
 #        files = result.entries
 #        
 #        # Print out the files
 #        #for file in files:
-#            #await ctx.send(f"Name: {file.name}, Type: {'Folder' if isinstance(file, dropbox.files.FolderMetadata) else 'File'}")
+#            #await interaction.response.send_message(f"Name: {file.name}, Type: {'Folder' if isinstance(file, dropbox.files.FolderMetadata) else 'File'}")
+#            
+#        for file in files:
+#            print(file)
 #
 #        test = files[0]
 #
 #        shared_link_url = get_or_create_shared_link(test.path_lower)
-#        await ctx.send(f"{shared_link_url}")
+#        await interaction.response.send_message(f"{shared_link_url}")
 #        print(f"posted {test.name} with the following link: {shared_link_url}")
 #
 #    except Exception as err:
-#        await ctx.send(f"API error: {err}")
+#        await interaction.response.send_message(f"API error: {err}")
 
 client.run(TOKEN_DISCORD)

@@ -45,8 +45,14 @@ async def rename_dropbox_files(absolute_path, dropbox_path):
 
 def get_or_create_shared_link(path):
     try:
+        # Create settings object
+        settings = dropbox.sharing.SharedLinkSettings(
+            requested_visibility=dropbox.sharing.RequestedVisibility.public, # Specifies the requested visibility for the shared link. Possible values are public (anyone with the link), team_only (only members of the same Dropbox Business team), or password (with a password).
+            expires=None  # or set an expiration time
+        )
+        
         # Try to create a shared link
-        shared_link = dbx.sharing_create_shared_link_with_settings(path)
+        shared_link = dbx.sharing_create_shared_link_with_settings(path, settings)
         return shared_link.url
     
     except dropbox.exceptions.ApiError as err:
@@ -55,9 +61,16 @@ def get_or_create_shared_link(path):
             links = dbx.sharing_list_shared_links(path=path)
             if links.links:
                 return links.links[0].url
-        raise err
+            else:
+                raise Exception(f"No shared link found for '{path}'")
+            
+        elif isinstance(err.error, dropbox.exceptions.HttpError):
+            # Handle HTTP errors (e.g., connection issues)
+            raise Exception(f"HTTP error occurred: {err}")
 
-
+        else:
+            # Handle other Dropbox API errors
+            raise Exception(f"Dropbox API error occurred: {err}")
 
 def get_all_files(path):
     try:

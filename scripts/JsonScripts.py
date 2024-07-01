@@ -1,6 +1,55 @@
 from scripts.DropboxScripts import get_all_files
-import json
-import re
+import json, re, os, piexif, time, subprocess
+from PIL import Image
+
+with open('config.json') as config_file:
+    config = json.load(config_file)
+
+async def strip_file_exif(absolute_path):
+    for filename in os.listdir(absolute_path):
+        file_path = os.path.join(absolute_path, filename)
+
+        # exif strip for image files
+        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+            try:
+                # Open image and get exif data
+                img = Image.open(file_path)
+                exif_dict = piexif.load(img.info['exif'])
+
+                # Remove exif data
+                exif_bytes = piexif.dump({})
+                
+                # Save stripped image back to original file
+                img.save(file_path, exif=exif_bytes)
+                print(f"Stripped EXIF data from {file_path}")
+            except Exception as err:
+                raise Exception(f"Failed to strip EXIF data from {file_path}: {err}")
+            
+        # exif strip for video files
+        elif filename.lower().endswith(('.mp4')):
+            try:
+                # Create a temporary file path for the output
+                temp_output_path = file_path + ".temp.mp4"
+                
+                # Command to strip metadata
+                command = [
+                    "ffmpeg", "-y", "-i", file_path, "-map_metadata", "-1", "-c", "copy", temp_output_path
+                ]
+                
+                # Run the command
+                subprocess.run(command, check=True)
+                
+                # Ensure the ffmpeg process is completed and file handles are closed
+                time.sleep(1)
+
+                # Replace original file with the stripped version
+                os.replace(temp_output_path, file_path)
+                print(f"Stripped EXIF data from {file_path}")
+            except subprocess.CalledProcessError as err:
+                raise Exception(f"Failed to strip metadata from {file_path}: {err}")
+            finally:
+                if os.path.exists(temp_output_path):
+                    os.remove(temp_output_path)
 
 def generate_json_file (dropbox_path, absolute_path, date):
     example_month = f"{date}-XX"
@@ -9,11 +58,15 @@ def generate_json_file (dropbox_path, absolute_path, date):
         #prefix for every file name
         "namePrefix": "",
         "validated": False,
+        "shiny-media-id": config["shiny-media-id"],
+        "super-shiny-media-id": config["super-shiny-media-id"],
         "content": {
             #eg 2024-11-xx
             example_month: {
                 "header": "",
                 "footer": "",
+                "channel": 0,
+                "posted": False,
                 "files": {}
             }
         }
@@ -45,6 +98,9 @@ async def validate_json_file (absolute_path):
         for jsonDate in data["content"]:
             if not pattern.match(jsonDate):
                 raise Exception("date is not correct")
+            
+            if data["content"][jsonDate]["channel"] == 0:
+                raise Exception(f"channel not set")
             
             dates.append(jsonDate)
             if len(dates) != len(set(dates)):
@@ -91,6 +147,9 @@ async def rename_json_files (absolute_path):
                             raise Exception("unkown file extension")
                     else:
                         new_key = f'{data["namePrefix"]} {filename}'
+                    
+                    
+                    #new_key = new_key.replace(' ', '-')
                     
                     file_data["filename"] = file_key
                     
