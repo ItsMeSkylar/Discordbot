@@ -5,9 +5,15 @@ from PIL import Image
 with open('config.json') as config_file:
     config = json.load(config_file)
 
-async def strip_file_exif(absolute_path):
-    for filename in os.listdir(absolute_path):
-        file_path = os.path.join(absolute_path, filename)
+APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+APP_DROPBOX_PATH = "/content/uploads"
+
+
+async def strip_file_exif(date):
+    folder = os.path.join(APP_ABSOLUTE_PATH, "content\\uploads", date)
+    
+    for filename in os.listdir(folder):
+        file_path = os.path.join(folder, filename)
 
         # exif strip for image files
         if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
@@ -49,8 +55,12 @@ async def strip_file_exif(absolute_path):
                 if os.path.exists(temp_output_path):
                     os.remove(temp_output_path)
 
-def generate_json_file (dropbox_path, absolute_path, date):
+
+def generate_json_file (date):
     example_month = f"{date}-XX"
+    
+    folder = os.path.join(APP_ABSOLUTE_PATH, "content\\uploads", date)
+    dropbox_path = f"{APP_DROPBOX_PATH}/{date}"
     
     data = {
         #prefix for every file name
@@ -77,17 +87,20 @@ def generate_json_file (dropbox_path, absolute_path, date):
         data["content"][example_month]["files"][file.name]["description"] = ""
 
     # Save data to JSON file
-    with open(f'{absolute_path}.json', 'w') as json_file:
+    with open(f'{folder}.json', 'w') as json_file:
         json.dump(data, json_file, indent=4)
      
-async def validate_json_file (absolute_path):
+
+async def validate_json_file (date):
     #ex 2024-01-02
     pattern = re.compile("^20\d{2}-\d{2}-\d{2}$")
     
     dates = []
     filenames = []
     
-    with open(f'{absolute_path}.json', 'r') as json_file:
+    folder = os.path.join(APP_ABSOLUTE_PATH, "content\\uploads", date)
+    
+    with open(f'{folder}.json', 'r') as json_file:
         data = json.load(json_file)
         
         if data["namePrefix"] == "":
@@ -114,19 +127,22 @@ async def validate_json_file (absolute_path):
                 
                 if len(filenames) != len(set(filenames)):
                     raise Exception(f"Duplicate filenames found: '{filename}'")
+          
                 
-async def rename_json_files (absolute_path):
+async def rename_json_files (date):
     try:
         pattern = re.compile("(?<=\.)[^.]+$")
         
-        with open(f'{absolute_path}.json', 'r') as json_file:
+        folder = os.path.join(APP_ABSOLUTE_PATH, "content\\uploads", date)
+        
+        with open(f'{folder}.json', 'r') as json_file:
             data = json.load(json_file)
             
             if data["validated"] == True:
                 raise Exception(f"File already validated")
             
             # Iterate over the content
-            for date, content in data["content"].items():
+            for jsondate, content in data["content"].items():
                 
                 new_files = {}
                 
@@ -146,21 +162,18 @@ async def rename_json_files (absolute_path):
                     else:
                         new_key = f'{data["namePrefix"]} {filename}'
                     
-                    
-                    #new_key = new_key.replace(' ', '-')
-                    
                     file_data["filename"] = file_key
                     
                     # Add the new key-value pair to the new_files dictionary
                     new_files[new_key] = file_data
                 
                 # Replace the old files dictionary with the new one
-                data["content"][date]["files"] = new_files
+                data["content"][jsondate]["files"] = new_files
         
         data["validated"] = True
         
         # Write the modified data back to the JSON file
-        with open(f'{absolute_path}.json', 'w') as json_file:
+        with open(f'{folder}.json', 'w') as json_file:
             json.dump(data, json_file, indent=4)
                 
     except Exception as err:

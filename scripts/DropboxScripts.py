@@ -1,4 +1,3 @@
-
 import dropbox, os
 import dropbox.files
 import setCreds
@@ -15,6 +14,9 @@ setCreds.bootstrap_creds()
 
 TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
 
+APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+APP_DROPBOX_PATH = "/content/uploads"
+
 # Create a Dropbox object using the access token
 dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 try:
@@ -25,12 +27,16 @@ except dropbox.exceptions.AuthError as err:
     dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 
 
-async def rename_dropbox_files(absolute_path, dropbox_path):
+async def rename_dropbox_files(date):
     try:
-        with open(f'{absolute_path}.json', 'r') as json_file:
+        folder = os.path.join(APP_ABSOLUTE_PATH, "content\\uploads", date)
+        
+        dropbox_path = f"{APP_DROPBOX_PATH}/{date}"
+        
+        with open(f'{folder}.json', 'r') as json_file:
             data = json.load(json_file)
         
-        for date, content in data["content"].items():
+        for jsondate, content in data["content"].items():
                 for file_key, file_data in content["files"].items():
                     filename = file_data.get("filename", "")
                     
@@ -71,6 +77,7 @@ def get_or_create_shared_link(path):
         else:
             # Handle other Dropbox API errors
             raise Exception(f"Dropbox API error occurred: {err}")
+
 
 def get_all_files(path):
     try:
