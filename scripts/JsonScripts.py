@@ -14,7 +14,7 @@ async def strip_file_exif(absolute_path):
             try:
                 # Open image and get exif data
                 img = Image.open(file_path)
-                exif_dict = piexif.load(img.info['exif'])
+                piexif.load(img.info['exif'])
 
                 # Remove exif data
                 exif_bytes = piexif.dump({})
@@ -32,9 +32,7 @@ async def strip_file_exif(absolute_path):
                 temp_output_path = file_path + ".temp.mp4"
                 
                 # Command to strip metadata
-                command = [
-                    "ffmpeg", "-y", "-i", file_path, "-map_metadata", "-1", "-c", "copy", temp_output_path
-                ]
+                command = ["ffmpeg", "-y", "-i", file_path, "-map_metadata", "-1", "-c", "copy", temp_output_path]
                 
                 # Run the command
                 subprocess.run(command, check=True)

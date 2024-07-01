@@ -3,6 +3,7 @@ from scripts.DropboxScripts import get_or_create_shared_link
 from scripts.DropboxScripts import rename_dropbox_files
 
 from scripts.DiscordScripts import post_content
+from scripts.DiscordScripts import check_date_and_time
 
 from scripts.JsonScripts import generate_json_file
 from scripts.JsonScripts import validate_json_file
@@ -63,6 +64,7 @@ async def date_validation(year, month):
 @client.event
 async def on_ready():
     try:
+        client.loop.create_task(check_date_and_time(client))
         await client.change_presence(activity=discord.Game(name="Sqrrrks~"))
         await client.tree.sync()
         print("Command tree synced successfully.")
@@ -155,7 +157,7 @@ async def post(interaction: discord.Interaction, year: str, month: str, day: str
     try:
         date = await date_validation(year, month)
         dropbox_path = f"/content/uploads/{date}"
-        absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
+        absolute_path = os.path.join(APP_ABSOLUTE_PATH, f"content\/uploads/{date}")
         
         await interaction.response.defer() # post_content takes longer than 3 seconds, defer and follow up
         
@@ -219,5 +221,6 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
 #
 #    except Exception as err:
 #        await interaction.response.send_message(f"API error: {err}")
+
 
 client.run(TOKEN_DISCORD)
