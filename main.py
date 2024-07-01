@@ -38,7 +38,6 @@ def user_validation(user):
         raise Exception("user not whitelisted")
 
 
-# ex 2024-08
 async def date_validation(year, month, day = None):
     if not year.isdigit() or not month.isdigit():
         raise Exception(f"ERROR: Year and month must be numeric.")

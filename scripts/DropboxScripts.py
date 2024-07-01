@@ -17,6 +17,11 @@ TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
 APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 APP_DROPBOX_PATH = "/content/uploads"
 
+settings = dropbox.sharing.SharedLinkSettings(
+    requested_visibility=dropbox.sharing.RequestedVisibility.public, # Specifies the requested visibility for the shared link. Possible values are public (anyone with the link), team_only (only members of the same Dropbox Business team), or password (with a password).
+    expires=None  # or set an expiration time
+)
+
 # Create a Dropbox object using the access token
 dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 try:
@@ -25,6 +30,15 @@ except dropbox.exceptions.AuthError as err:
     setCreds.authorizeDropbox()
     TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
     dbx = dropbox.Dropbox(TOKEN_DROPBOX)
+    
+    
+async def check_validity():
+    try:
+        dbx.users_get_current_account()
+        return True
+    except dropbox.exceptions.AuthError as err:
+        print(f"dropbox Access token is invalid: {err}")
+        return False 
 
 
 async def rename_dropbox_files(date):
@@ -51,12 +65,6 @@ async def rename_dropbox_files(date):
 
 def get_or_create_shared_link(path):
     try:
-        # Create settings object
-        settings = dropbox.sharing.SharedLinkSettings(
-            requested_visibility=dropbox.sharing.RequestedVisibility.public, # Specifies the requested visibility for the shared link. Possible values are public (anyone with the link), team_only (only members of the same Dropbox Business team), or password (with a password).
-            expires=None  # or set an expiration time
-        )
-        
         # Try to create a shared link
         shared_link = dbx.sharing_create_shared_link_with_settings(path, settings)
         return shared_link.url

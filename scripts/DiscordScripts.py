@@ -1,9 +1,9 @@
 from scripts.DropboxScripts import get_or_create_shared_link
+from scripts.DropboxScripts import check_validity
 
 import json, re, os, discord, asyncio
 from datetime import datetime
 
-#F:\Dropbox\Apps\DiscordTestApp
 APP_ABSOLUTE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 APP_DROPBOX_PATH = "/content/uploads"
 
@@ -12,6 +12,8 @@ APP_DROPBOX_PATH = "/content/uploads"
 async def check_date_and_time(client):
     await client.wait_until_ready()
     while not client.is_closed():
+        await check_validity()
+        
         now = datetime.now()
         today_date = now.date().isoformat()
         
@@ -47,7 +49,7 @@ async def check_date_and_time(client):
                                     
         # Wait for 60 seconds before checking again
         print(f"Discord bot async update at: {now.strftime('%Y-%m-%d %H:%M')}")
-        await asyncio.sleep(60*60)
+        await asyncio.sleep(60*5)
 
 
 async def post_content(client, date, channel_id = None):

@@ -12,6 +12,8 @@ APP_DROPBOX_PATH = "/content/uploads"
 async def strip_file_exif(date):
     folder = os.path.join(APP_ABSOLUTE_PATH, "content\\uploads", date)
     
+    #BUG: mp4 files exif old file still exists
+    
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
 
