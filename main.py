@@ -183,6 +183,20 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
 
 
 
+@client.tree.command(name="clear_all_messages")
+async def clear_all_messages(interaction: discord.Interaction, channel: discord.TextChannel):
+    # Check if the bot has permissions to manage messages
+    try:
+        user_validation(interaction.user.name)
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+    
+    await interaction.response.defer()
+    # Clear all messages in the specified channel
+    await channel.purge(limit=None)  # None means clear all messages
+    await interaction.followup.send(f"All messages in {channel.mention} have been cleared.")
+
+
 #@client.tree.command(name="jen", description="test description")
 #@app_commands.choices(choice=[
 #    app_commands.Choice(name="generate folders", value="option_1"),
