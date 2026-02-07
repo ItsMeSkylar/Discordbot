@@ -173,6 +173,13 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
     except Exception as err:
         return await interaction.response.send_message(f"{err}")
     
+@client.tree.command(name="channel_id")
+async def get_channel_id(interaction: discord.Interaction, channel: discord.TextChannel):
+    try:
+        return channel.id
+    except Exception as err:
+        return await interaction.response.send_message(f"{err}")
+
 
 @client.tree.command(name="clear_all_messages")
 async def clear_all_messages(interaction: discord.Interaction, channel: discord.TextChannel):
