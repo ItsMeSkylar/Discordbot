@@ -90,12 +90,11 @@ async def date_validation(year, month, day=None):
     return ret
 
 
-
-
 # /Apps/Shared/content/upload-schedule/2026-02/july file 4.JPG
 
 BASE_URL = "http://localhost/api"  # must be reachable from the bot machine
 INTERNAL_TOKEN = "abc123"
+
 
 @client.tree.command(name="test")
 async def post_image(interaction: discord.Interaction, dropbox_path: str) -> None:
@@ -129,7 +128,15 @@ async def post_image(interaction: discord.Interaction, dropbox_path: str) -> Non
         embed.set_image(url=f"attachment://{filename}")
         embeds.append(embed)
 
-    await interaction.followup.send(embeds=embeds, files=files)
+    await interaction.followup.send(
+        content="Text above all embeds",
+        embeds=embeds,
+        files=files
+    )
+    
+    await interaction.followup.send(
+    content="Text below all embeds"
+    )
 
 
 
