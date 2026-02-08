@@ -1,3 +1,4 @@
+import datetime
 from scripts.JsonScripts import generate_json_file
 from scripts.JsonScripts import validate_json_file
 from scripts.JsonScripts import rename_json_files
@@ -11,13 +12,22 @@ from scripts.DropboxScripts import rename_dropbox_files
 """
 
 from discord.ext import commands
+import os
+import json
+import discord
+import aiohttp
+import io
+import os
+import json
+import discord
+import datetime
 import dropbox.files
 import os
 import json
 import discord
 import aiohttp
 import io
-
+from PIL import Image
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -81,35 +91,61 @@ async def date_validation(year, month, day=None):
     return ret
 
 
-
-
-
-
-
 BASE_URL = "http://localhost/api"  # must be reachable from the bot machine
 
 
 @client.tree.command(name="test")
 async def post_image(interaction: discord.Interaction, dropbox_path: str) -> None:
     url = f"{BASE_URL}/internal/image"
-    params = {"path": dropbox_path}
     headers = {"X-Internal-Token": "abc123"}
+    if not dropbox_path.strip():
+        raise RuntimeError("No dropbox path provided.")
+
+    await interaction.response.defer()
 
     async with aiohttp.ClientSession() as session:
+        params = {"path": dropbox_path.strip()}
         async with session.get(url, params=params, headers=headers) as resp:
             if resp.status != 200:
                 text = await resp.text()
                 raise RuntimeError(
                     f"backend image fetch failed: {resp.status} {text[:200]}")
-            content_type = resp.headers.get(
-                "Content-Type", "application/octet-stream")
-            # choose a filename based on content-type (optional)
-            filename = "image.png" if "png" in content_type else "image.jpg"
-
             data = await resp.read()
 
-    file = discord.File(fp=io.BytesIO(data), filename=filename)
-    await interaction.response.send_message(file=file)
+    with Image.open(io.BytesIO(data)) as source_image:
+        image = source_image.convert("RGB")
+        max_tile_size = 600
+        image.thumbnail((max_tile_size, max_tile_size))
+        width, height = image.size
+        grid_image = Image.new("RGB", (width * 2, height * 2))
+        positions = [
+            (0, 0),
+            (width, 0),
+            (0, height),
+            (width, height),
+        ]
+        for position in positions:
+            grid_image.paste(image, position)
+
+    output = io.BytesIO()
+    grid_image.save(output, format="JPEG", quality=80, optimize=True)
+    output.seek(0)
+    filename = "image-grid.jpg"
+    file = discord.File(fp=output, filename=filename)
+
+    embed = discord.Embed(
+        title="Example Header",
+        description="This is an example description. Markdown works too!\n\nhttps://automatic.links\n> Block Quotes\n```\nCode Blocks\n```\n*Emphasis* or _emphasis_\n`Inline code` or ``inline code``\n[Links](https://example.com)\n<@123>, <@!123>, <#123>, <@&123>, @here, @everyone mentions\n||Spoilers||\n~~Strikethrough~~\n**Strong**\n__Underline__",
+        colour=0x00b0f4,
+        timestamp=datetime.datetime.now())
+    embed.set_footer(text="Example Footer")
+    embed.set_image(url=f"attachment://{filename}")
+
+    await interaction.followup.send(embed=embed, file=file)
+
+
+
+
 
 
 @client.tree.command(name="posting")
@@ -128,24 +164,10 @@ async def post_image(channel: discord.abc.Messageable, image_id: str):
     await channel.send(file=discord.File(io.BytesIO(data), filename=filename))
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 @client.event
 async def on_ready():
     try:
-        ###client.loop.create_task(check_date_and_time(client))
+        # client.loop.create_task(check_date_and_time(client))
         await client.change_presence(activity=discord.Game(name="Sqrrrks~"))
         await client.tree.sync()
         print("Command tree synced successfully.")
