@@ -25,8 +25,7 @@ import dropbox.files
 import os
 import json
 import discord
-import aiohttp
-import io
+import aiohttp, json
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -94,30 +93,48 @@ async def date_validation(year, month, day=None):
 
 BASE_URL = "http://localhost/api"  # must be reachable from the bot machine
 INTERNAL_TOKEN = "abc123"
-
+APP_DROPBOX_SCHEDULE_PATH = "/Apps/Shared/content/upload-schedule"
 
 @client.tree.command(name="test")
 async def post_image(interaction: discord.Interaction, dropbox_path: str) -> None:
-    url = f"{BASE_URL}/internal/image"
-    headers = {"X-Internal-Token": INTERNAL_TOKEN}
+
     if not dropbox_path.strip():
-        raise RuntimeError("No dropbox path provided.")
+        raise RuntimeError("No date provided.")
 
     await interaction.response.defer()
 
-    async with aiohttp.ClientSession() as session:
-        params = {"path": dropbox_path.strip()}
-        async with session.get(url, params=params, headers=headers) as resp:
-            if resp.status != 200:
-                text = await resp.text()
-                raise RuntimeError(
-                    f"backend image fetch failed: {resp.status} {text[:200]}")
-            data = await resp.read()
+    schedule_date = dropbox_path.strip()
+    dbx = dropbox.Dropbox(os.environ["DROPBOX_BEARER"])
+    file_paths = []
+    schedule_path = f"/Apps/Shared/content/upload-schedule/{schedule_date}.json"
+    _metadata, response = dbx.files_download(schedule_path)
+    schedule = json.loads(response.content.decode("utf-8"))
+    if not schedule.get("content"):
+        raise RuntimeError("Schedule JSON has no content.")
+
+    matching_date = None
+    for content_date in sorted(schedule["content"].keys()):
+        if content_date.startswith(f"{schedule_date}-"):
+            matching_date = content_date
+            break
+
+    if not matching_date:
+        raise RuntimeError(f"No content found for {schedule_date}.")
+
+    files = schedule["content"][matching_date].get("files", {})
+    if not files:
+        raise RuntimeError(f"Schedule JSON has no files for {matching_date}.")
+
+    for file_key in list(files.keys())[:4]:
+        file_paths.append(f"/content/uploads/{schedule_date}/{file_key}")
+
 
     embeds = []
     files = []
-    for index in range(1, 5):
-        filename = f"image-{index}.jpg"
+    for index, file_path in enumerate(file_paths, start=1):
+        _metadata, response = dbx.files_download(file_path)
+        data = response.content
+        filename = os.path.basename(file_path) or f"image-{index}.jpg"
         file = discord.File(fp=io.BytesIO(data), filename=filename)
         files.append(file)
         embed = discord.Embed(
@@ -152,21 +169,6 @@ async def post_image(interaction: discord.Interaction, dropbox_path: str) -> Non
 
 
 
-@client.tree.command(name="posting")
-async def post_image(channel: discord.abc.Messageable, image_id: str):
-    url = f"{BASE_URL}/api/internal/image/{image_id}"
-    headers = {"X-Internal-Token": "abc123"}
-
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers) as resp:
-            if resp.status != 200:
-                raise RuntimeError(f"{resp.status}: {await resp.text()}")
-            data = await resp.read()
-            content_type = resp.headers.get("Content-Type", "")
-
-    filename = "image.png" if "png" in content_type else "image.jpg"
-    await channel.send(file=discord.File(io.BytesIO(data), filename=filename))
-
 
 @client.event
 async def on_ready():
@@ -178,104 +180,6 @@ async def on_ready():
         print("JenniferBot ready!")
     except Exception as err:
         print(f"Failed to sync command tree: {err}")
-
-
-# simply generates a folder, you lazy bum
-@client.tree.command(name="generate_folder", description="generates folder for content")
-async def generate_folders(interaction: discord.Interaction, year: str, month: str):
-    try:
-        user_validation(interaction.user.name)
-
-        date = await date_validation(year, month)
-        absolute_path = os.path.join(
-            APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
-
-        if not os.path.exists(absolute_path):
-            os.makedirs(absolute_path)
-            await interaction.response.send_message(f"Successfully generated folder: {absolute_path}\nPlease add your content to the folder and then run generate_json.")
-        else:
-            raise Exception(
-                f"Folder '{date}' already exists at '{absolute_path}'")
-
-    except Exception as err:
-        await interaction.response.send_message(f"(generate_folders) ERROR: {err}")
-
-
-# generates json based of content in given folder
-@client.tree.command(name="generate_json", description="generates json file based of content in folder")
-async def generate_json(interaction: discord.Interaction, year: str, month: str):
-    try:
-        user_validation(interaction.user.name)
-
-        date = await date_validation(year, month)
-        absolute_path = os.path.join(
-            APP_ABSOLUTE_PATH, f"content\\uploads\\{date}")
-
-        if not os.path.exists(absolute_path):
-            raise Exception(f"missing folder: '{absolute_path}'")
-
-        generate_json_file(date)
-        await interaction.response.send_message(f"json successfully generated at {absolute_path}!\nplease edit the json file and then run validate_folder.")
-
-    except Exception as err:
-        await interaction.response.send_message(f"(generate_json) ERROR: {err}")
-
-
-# validate prefix name, dates, and filenames
-@client.tree.command(name="validate_folder", description="validate content for specific folder")
-async def validate_folder(interaction: discord.Interaction, year: str, month: str):
-    try:
-        user_validation(interaction.user.name)
-
-        date = await date_validation(year, month)
-        dropbox_path = f"/content/uploads/{date}"
-        print(dropbox_path)
-        await validate_json_file(date)
-        await rename_json_files(date)
-
-        # rename_dropbox_files takes longer than 3 seconds, defer and follow up
-        await interaction.response.defer()
-
-        await strip_file_exif(date)
-        # await rename_dropbox_files(date)
-
-        await interaction.followup.send(f"Folder and Json validated!\nensure that it works by using /post")
-
-    except Exception as err:
-        await interaction.response.send_message(f"(validate_folder) ERROR: {err}")
-
-
-@client.tree.command(name="post", description="posts content to channel")
-async def post(interaction: discord.Interaction, year: str, month: str, day: str, channel: discord.TextChannel = None):
-    try:
-        user_validation(interaction.user.name)
-
-        date = await date_validation(year, month, day)
-
-        # post_content takes longer than 3 seconds, defer and follow up
-        await interaction.response.defer()
-        """"
-        if channel:
-           await post_content(client, date, channel.id)
-        else:
-            await post_content(client, date)
-        """
-
-        await interaction.delete_original_response()
-
-    except Exception as err:
-        await interaction.response.send_message(f"(post) ERROR: {err}")
-
-
-@client.tree.command(name="set_channel")
-async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
-    try:
-        user_validation(interaction.user.name)
-        config['channel'] = channel.id
-        await interaction.response.send_message(f'Config variable "channel" set to {channel.id}')
-
-    except Exception as err:
-        return await interaction.response.send_message(f"{err}")
 
 
 @client.tree.command(name="channel_id")
