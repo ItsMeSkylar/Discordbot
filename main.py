@@ -27,7 +27,6 @@ import json
 import discord
 import aiohttp
 import io
-from PIL import Image
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -91,13 +90,17 @@ async def date_validation(year, month, day=None):
     return ret
 
 
-BASE_URL = "http://localhost/api"  # must be reachable from the bot machine
 
+
+# /Apps/Shared/content/upload-schedule/2026-02/july file 4.JPG
+
+BASE_URL = "http://localhost/api"  # must be reachable from the bot machine
+INTERNAL_TOKEN = "abc123"
 
 @client.tree.command(name="test")
 async def post_image(interaction: discord.Interaction, dropbox_path: str) -> None:
     url = f"{BASE_URL}/internal/image"
-    headers = {"X-Internal-Token": "abc123"}
+    headers = {"X-Internal-Token": INTERNAL_TOKEN}
     if not dropbox_path.strip():
         raise RuntimeError("No dropbox path provided.")
 
@@ -112,36 +115,30 @@ async def post_image(interaction: discord.Interaction, dropbox_path: str) -> Non
                     f"backend image fetch failed: {resp.status} {text[:200]}")
             data = await resp.read()
 
-    with Image.open(io.BytesIO(data)) as source_image:
-        image = source_image.convert("RGB")
-        max_tile_size = 600
-        image.thumbnail((max_tile_size, max_tile_size))
-        width, height = image.size
-        grid_image = Image.new("RGB", (width * 2, height * 2))
-        positions = [
-            (0, 0),
-            (width, 0),
-            (0, height),
-            (width, height),
-        ]
-        for position in positions:
-            grid_image.paste(image, position)
+    embeds = []
+    files = []
+    for index in range(1, 5):
+        filename = f"image-{index}.jpg"
+        file = discord.File(fp=io.BytesIO(data), filename=filename)
+        files.append(file)
+        embed = discord.Embed(
+            # title="Example Header",
+            description="header description",
+            colour=0x9900ff)
+        embed.set_footer(text="footer description")
+        embed.set_image(url=f"attachment://{filename}")
+        embeds.append(embed)
 
-    output = io.BytesIO()
-    grid_image.save(output, format="JPEG", quality=80, optimize=True)
-    output.seek(0)
-    filename = "image-grid.jpg"
-    file = discord.File(fp=output, filename=filename)
+    await interaction.followup.send(embeds=embeds, files=files)
 
-    embed = discord.Embed(
-        title="Example Header",
-        description="This is an example description. Markdown works too!\n\nhttps://automatic.links\n> Block Quotes\n```\nCode Blocks\n```\n*Emphasis* or _emphasis_\n`Inline code` or ``inline code``\n[Links](https://example.com)\n<@123>, <@!123>, <#123>, <@&123>, @here, @everyone mentions\n||Spoilers||\n~~Strikethrough~~\n**Strong**\n__Underline__",
-        colour=0x00b0f4,
-        timestamp=datetime.datetime.now())
-    embed.set_footer(text="Example Footer")
-    embed.set_image(url=f"attachment://{filename}")
 
-    await interaction.followup.send(embed=embed, file=file)
+
+
+
+
+
+
+
 
 
 
