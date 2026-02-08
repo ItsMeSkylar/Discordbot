@@ -1,4 +1,4 @@
-from scripts.DropboxScripts import get_all_files
+"""from scripts.DropboxScripts import get_all_files"""
 import json, re, os, piexif, time, subprocess
 from PIL import Image
 

@@ -1,13 +1,13 @@
 import dropbox, os
 import dropbox.files
-import setCreds
+"""import setCreds"""
 import json
 
 # Load credencials into system environment variables.
 # os.environ["DROPBOX_APP_KEY"]
 # os.environ["DROPBOX_APP_SECRET"]
 # os.environ["DROPBOX_BEARER"]
-setCreds.bootstrap_creds()
+"""setCreds.bootstrap_creds()"""
 
 #with open("tokens/TOKEN_DROPBOX.txt", "r") as f:
 #    TOKEN_DROPBOX = f.read()
@@ -27,7 +27,7 @@ dbx = dropbox.Dropbox(TOKEN_DROPBOX)
 try:
     print(dbx.users_get_current_account())
 except dropbox.exceptions.AuthError as err:
-    setCreds.authorizeDropbox()
+    """setCreds.authorizeDropbox()"""
     TOKEN_DROPBOX = os.environ["DROPBOX_BEARER"]
     dbx = dropbox.Dropbox(TOKEN_DROPBOX)
     
