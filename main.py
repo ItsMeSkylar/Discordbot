@@ -97,44 +97,26 @@ APP_DROPBOX_SCHEDULE_PATH = "/Apps/Shared/content/upload-schedule"
 
 @client.tree.command(name="test")
 async def post_image(interaction: discord.Interaction, dropbox_path: str) -> None:
-
+    url = f"{BASE_URL}/internal/image"
+    headers = {"X-Internal-Token": INTERNAL_TOKEN}
     if not dropbox_path.strip():
-        raise RuntimeError("No date provided.")
+        raise RuntimeError("No dropbox path provided.")
 
     await interaction.response.defer()
 
-    schedule_date = dropbox_path.strip()
-    dbx = dropbox.Dropbox(os.environ["DROPBOX_BEARER"])
-    file_paths = []
-    schedule_path = f"/Apps/Shared/content/upload-schedule/{schedule_date}.json"
-    _metadata, response = dbx.files_download(schedule_path)
-    schedule = json.loads(response.content.decode("utf-8"))
-    if not schedule.get("content"):
-        raise RuntimeError("Schedule JSON has no content.")
-
-    matching_date = None
-    for content_date in sorted(schedule["content"].keys()):
-        if content_date.startswith(f"{schedule_date}-"):
-            matching_date = content_date
-            break
-
-    if not matching_date:
-        raise RuntimeError(f"No content found for {schedule_date}.")
-
-    files = schedule["content"][matching_date].get("files", {})
-    if not files:
-        raise RuntimeError(f"Schedule JSON has no files for {matching_date}.")
-
-    for file_key in list(files.keys())[:4]:
-        file_paths.append(f"/content/uploads/{schedule_date}/{file_key}")
-
+    async with aiohttp.ClientSession() as session:
+        params = {"path": dropbox_path.strip()}
+        async with session.get(url, params=params, headers=headers) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                raise RuntimeError(
+                    f"backend image fetch failed: {resp.status} {text[:200]}")
+            data = await resp.read()
 
     embeds = []
     files = []
-    for index, file_path in enumerate(file_paths, start=1):
-        _metadata, response = dbx.files_download(file_path)
-        data = response.content
-        filename = os.path.basename(file_path) or f"image-{index}.jpg"
+    for index in range(1, 5):
+        filename = f"image-{index}.jpg"
         file = discord.File(fp=io.BytesIO(data), filename=filename)
         files.append(file)
         embed = discord.Embed(
