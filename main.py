@@ -28,7 +28,7 @@ def start_http():
 
 BASE_URL = "http://localhost/api"
 INTERNAL_TOKEN = "abc123"
-HELLO_CHANNEL_ID = 1231050220633325628
+BOTS_CHANNEL = 1231050220633325628
 
 # ─────────────────────────────
 # Discord bot
@@ -52,7 +52,7 @@ _http_started = False
 
 
 @app.post("/post-schedule")
-async def hello(payload: dict):
+async def postSchedule(payload: dict):
     if BOT_LOOP is None:
         return {"ok": False, "error": "bot not ready yet"}
 
@@ -67,7 +67,7 @@ async def hello(payload: dict):
 
 
 async def _post_payload(payload: dict):
-    channel = client.get_channel(HELLO_CHANNEL_ID) or await client.fetch_channel(HELLO_CHANNEL_ID)
+    channel = client.get_channel(BOTS_CHANNEL) or await client.fetch_channel(BOTS_CHANNEL)
 
     header_text = payload.get("header") or ""
     footer_text = payload.get("footer") or ""
