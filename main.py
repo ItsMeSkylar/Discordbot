@@ -25,6 +25,7 @@ with open("tokens/TOKEN_DISCORD.txt", "r") as f:
 def start_http():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
 
+
 BASE_URL = "http://localhost/api"
 INTERNAL_TOKEN = "abc123"
 HELLO_CHANNEL_ID = 1231050220633325628
@@ -49,6 +50,7 @@ _http_started = False
 # http call
 # ─────────────────────────────
 
+
 @app.post("/post-schedule")
 async def hello(payload: dict):
     if BOT_LOOP is None:
@@ -62,6 +64,7 @@ async def hello(payload: dict):
         return {"ok": False, "error": str(e)}
 
     return {"ok": True}
+
 
 async def _post_payload(payload: dict):
     channel = client.get_channel(HELLO_CHANNEL_ID) or await client.fetch_channel(HELLO_CHANNEL_ID)
@@ -159,6 +162,7 @@ async def _post_payload(payload: dict):
 # ─────────────────────────────
 # Discord events
 # ─────────────────────────────
+
 
 @client.event
 async def on_ready():
