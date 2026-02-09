@@ -41,32 +41,72 @@ BOT_LOOP: asyncio.AbstractEventLoop | None = None
 _http_started = False
 
 
-async def _send_hello(message: str):
+async def _post_payload(payload: dict):
     channel = client.get_channel(HELLO_CHANNEL_ID)
     if channel is None:
         channel = await client.fetch_channel(HELLO_CHANNEL_ID)
-    await channel.send(message)
 
+    header_text = payload.get("header") or ""
+    footer_text = payload.get("footer") or ""
+    files_meta = payload.get("files") or []
+
+    downloaded = []  # (filename, bytes, description)
+
+    headers = {"X-Internal-Token": INTERNAL_TOKEN}
+    file_url = f"{BASE_URL}/internal/file"
+
+    async with aiohttp.ClientSession() as session:
+        for item in files_meta:
+            file_path = item["fileDir"]
+            filename = file_path.rsplit("/", 1)[-1]
+            desc = item.get("description") or ""
+
+            async with session.get(
+                file_url,
+                params={"path": file_path},
+                headers=headers,
+            ) as r:
+                if r.status != 200:
+                    text = await r.text()
+                    raise RuntimeError(f"backend file failed: {r.status} {text[:200]}")
+                data = await r.read()
+
+            downloaded.append((filename, data, desc))
+
+    embeds = []
+    attachments = []
+
+    for filename, data, desc in downloaded:
+        attachments.append(discord.File(fp=io.BytesIO(data), filename=filename))
+
+        embed = discord.Embed(description=desc or " ", colour=0x9900ff)
+        if footer_text:
+            embed.set_footer(text=footer_text)
+
+        if filename.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
+            embed.set_image(url=f"attachment://{filename}")
+
+        embeds.append(embed)
+
+    await channel.send(
+        content=header_text if header_text else None,
+        embeds=embeds,
+        files=attachments,
+    )
 
 @app.post("/hello")
 async def hello(payload: dict):
     if BOT_LOOP is None:
         return {"ok": False, "error": "bot not ready yet"}
 
-    msg = payload.get("message", "Hello")
-
-    fut = asyncio.run_coroutine_threadsafe(
-        _send_hello(msg),
-        BOT_LOOP
-    )
+    fut = asyncio.run_coroutine_threadsafe(_post_payload(payload), BOT_LOOP)
 
     try:
-        fut.result(timeout=5)
+        fut.result(timeout=60)  # allow time for file downloads + upload
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
     return {"ok": True}
-
 
 def start_http():
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
