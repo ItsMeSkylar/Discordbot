@@ -1,8 +1,5 @@
 import datetime
-from scripts.JsonScripts import generate_json_file
-from scripts.JsonScripts import validate_json_file
-from scripts.JsonScripts import rename_json_files
-from scripts.JsonScripts import strip_file_exif
+
 
 """"
 from scripts.DiscordScripts import post_content
@@ -25,7 +22,8 @@ import dropbox.files
 import os
 import json
 import discord
-import aiohttp, json
+import aiohttp
+import json
 
 with open('config.json') as config_file:
     config = json.load(config_file)
@@ -89,30 +87,69 @@ async def date_validation(year, month, day=None):
     return ret
 
 
-# /Apps/Shared/content/upload-schedule/2026-02/july file 4.JPG
+# /test dropbox_path:/Apps/Shared/content/upload-schedule/2026-02/DSC00808.JPG
+# /test dropbox_path:/Apps/Shared/content/upload-schedule/2026-02/
 
 BASE_URL = "http://localhost/api"  # must be reachable from the bot machine
 INTERNAL_TOKEN = "abc123"
 APP_DROPBOX_SCHEDULE_PATH = "/Apps/Shared/content/upload-schedule"
 
+
 @client.tree.command(name="test")
-async def post_image(interaction: discord.Interaction, dropbox_path: str) -> None:
+async def post_image(interaction: discord.Interaction, date: str) -> None:
     url = f"{BASE_URL}/internal/image"
     headers = {"X-Internal-Token": INTERNAL_TOKEN}
-    if not dropbox_path.strip():
-        raise RuntimeError("No dropbox path provided.")
+    if not date.strip():
+        raise RuntimeError("No date path provided.")
 
     await interaction.response.defer()
 
+
+    yyyyMM = date.strip()
+    DD = "03" 
+    
+    test =  f"{BASE_URL}/internal/schedule"
+    print(test)
+    
     async with aiohttp.ClientSession() as session:
-        params = {"path": dropbox_path.strip()}
-        async with session.get(url, params=params, headers=headers) as resp:
+        
+        # 1) get schedule JSON
+        async with session.get(
+            test,
+            params={"path": yyyyMM, "DD": DD},
+            headers=headers,
+        ) as resp:
             if resp.status != 200:
                 text = await resp.text()
-                raise RuntimeError(
-                    f"backend image fetch failed: {resp.status} {text[:200]}")
-            data = await resp.read()
+                raise RuntimeError(f"backend schedule failed: {resp.status} {text[:200]}")
+            payload = await resp.json()
+            
+        files = []
+            
+        # 2) fetch each file and attach
+        for item in payload.get("files", []):
+            file_path = item["fileDir"]  # exact Dropbox path
+            filename = file_path.rsplit("/", 1)[-1]
 
+            async with session.get(
+                f"{BASE_URL}/internal/file",
+                params={"path": file_path},
+                headers=headers,
+            ) as r:
+                if r.status != 200:
+                    text = await r.text()
+                    raise RuntimeError(f"backend file failed: {r.status} {text[:200]}")
+                data = await r.read()
+
+            files.append(discord.File(fp=io.BytesIO(data), filename=filename))
+        
+          
+    """above old change"""       
+            
+   # send message + attachments
+    content = payload.get("header") or ""
+    await interaction.followup.send(content=content, files=files)
+    
     embeds = []
     files = []
     for index in range(1, 5):
@@ -132,24 +169,10 @@ async def post_image(interaction: discord.Interaction, dropbox_path: str) -> Non
         embeds=embeds,
         files=files
     )
-    
+
     await interaction.followup.send(
-    content="Text below all embeds"
+        content="Text below all embeds"
     )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @client.event
