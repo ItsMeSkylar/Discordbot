@@ -26,7 +26,6 @@ INTERNAL_TOKEN = "abc123"
 APP_DROPBOX_SCHEDULE_PATH = "/Apps/Shared/content/upload-schedule"
 
 
-
 @client.tree.command(name="test")
 async def post_image(interaction: discord.Interaction, date: str) -> None:
     headers = {"X-Internal-Token": INTERNAL_TOKEN}
@@ -37,7 +36,7 @@ async def post_image(interaction: discord.Interaction, date: str) -> None:
     await interaction.response.defer()
 
     yyyyMM = date.strip()
-    DD = "03"
+    DD = "09"
 
     schedule_url = f"{BASE_URL}/internal/schedule"
     file_url = f"{BASE_URL}/internal/file"
@@ -45,12 +44,15 @@ async def post_image(interaction: discord.Interaction, date: str) -> None:
     downloaded = []  # (filename, bytes, description)
 
     async with aiohttp.ClientSession() as session:
+        print("fetch respond from webserver")
+        
         # 1) fetch schedule JSON
         async with session.get(
             schedule_url,
             params={"path": yyyyMM, "DD": DD},
             headers=headers,
         ) as resp:
+            print("webserver fetch completed!")
             if resp.status != 200:
                 text = await resp.text()
                 raise RuntimeError(
@@ -62,12 +64,14 @@ async def post_image(interaction: discord.Interaction, date: str) -> None:
             file_path = item["fileDir"]
             filename = file_path.rsplit("/", 1)[-1]
             desc = item.get("description") or ""
+            print("fetch file from webserver: " + filename)
 
             async with session.get(
                 file_url,
                 params={"path": file_path},
                 headers=headers,
             ) as r:
+                print(filename + "fetched!")
                 if r.status != 200:
                     text = await r.text()
                     raise RuntimeError(
@@ -97,6 +101,7 @@ async def post_image(interaction: discord.Interaction, date: str) -> None:
 
         embeds.append(embed)
 
+    print("Sending data!")
     await interaction.followup.send(
         content=header_text if header_text else None,
         embeds=embeds,
